@@ -122,6 +122,22 @@ with st.sidebar:
     st.markdown("**Embedding Model:** " + os.environ.get("EMBEDDING_MODEL_ID", "N/A"))
     
     st.divider()
+
+    # LangSmith tracing toggle
+    if os.environ.get("LANGSMITH_API_KEY"):
+        st.subheader("🔍 LangSmith")
+        langsmith_enabled = st.checkbox(
+            "Enable Tracing",
+            value=os.environ.get("LANGSMITH_TRACING_V2") == "true",
+            help="Track and debug LangChain calls in LangSmith"
+        )
+        if langsmith_enabled:
+            os.environ["LANGSMITH_TRACING_V2"] = "true"
+            st.markdown(f"**Project:** {os.environ.get('LANGSMITH_PROJECT', 'default')}")
+        else:
+            os.environ["LANGSMITH_TRACING_V2"] = "false"
+    
+    st.divider()
     
     # Clear chat button
     if st.button("🗑️ Clear Chat History"):
