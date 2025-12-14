@@ -6,7 +6,7 @@ def load_code_files(path: str):
     documents = []
     for root, _, files in os.walk(path):
         for file in files:
-            if file.endswith((".py", ".go", ".js", ".ts", ".md")):
+            if file.endswith((".html", ".css", ".py", ".go", ".js", ".jsx", ".ts", ".tsx", ".md", ".yaml", ".yml", ".json", ".txt",".cs", ".c", ".cpp", ".h", ".hpp")):
                 file_path = os.path.join(root, file)
                 loader = TextLoader(file_path, encoding="utf-8")
                 docs = loader.load()

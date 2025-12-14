@@ -8,14 +8,12 @@ from utils.loader import load_code_files, split_documents
 from utils.embedding import create_vectorstore
 
 
-GITHUB_REPO = "https://github.com/amulya-leapfrog/Go-microservice-booking-system.git"
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 TEMP_CODEBASE_PATH='./codebase'
 MODEL_NAME = os.environ.get("EMBEDDING_MODEL_ID")
 PINECONE_INDEX_NAME = os.environ.get("PINECONE_INDEX_NAME")
 
 # Clone the github repo and store it in temp codebase folder
-def clone_repo(repo_url, target_path, token=None):
+def clone_repo(repo_url, target_path, token):
     # Check if codebase already exists and delete it
     if os.path.exists(target_path):
         print(f"Removing existing codebase at {target_path}...")
@@ -30,15 +28,19 @@ def clone_repo(repo_url, target_path, token=None):
     print("Repository cloned successfully!")
     
     return target_path
-CODEBASE_PATH = clone_repo(GITHUB_REPO, TEMP_CODEBASE_PATH, GITHUB_TOKEN)
 
-# Load and split code files
-raw_documents = load_code_files(CODEBASE_PATH)
-split_docs = split_documents(raw_documents)
+def load_git_repo(repo_path, token=None):
+    CODEBASE_PATH = clone_repo(repo_path, TEMP_CODEBASE_PATH, token)
 
-# Create Pinecone vectorstore
-vectorstore = create_vectorstore(split_docs, MODEL_NAME, PINECONE_INDEX_NAME)
+    # Load and split code files
+    raw_documents = load_code_files(CODEBASE_PATH)
+    split_docs = split_documents(raw_documents)
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+    # Create Pinecone vectorstore
+    vectorstore = create_vectorstore(split_docs, MODEL_NAME, PINECONE_INDEX_NAME)
 
-print("Vectorstore created and retriever ready for Runnable")
+    print("Vectorstore created")
+
+    shutil.rmtree(TEMP_CODEBASE_PATH)  # Remove the temp codebase folder
+
+    return vectorstore

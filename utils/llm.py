@@ -1,4 +1,3 @@
-# utils/bedrock_llm.py
 import os
 import boto3
 from langchain_aws import ChatBedrock

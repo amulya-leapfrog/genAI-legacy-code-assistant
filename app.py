@@ -4,6 +4,7 @@ load_dotenv()
 import streamlit as st
 import os
 from utils.embedding import get_existing_vectorstore
+from git_load import load_git_repo
 from utils.llm import get_llm
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough
@@ -26,7 +27,7 @@ st.markdown("Ask questions about your codebase and get AI-powered answers!")
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Initialize model selection dropdown
+    # Model selection - different options for Bedrock and OpenAI
     llm_provider = os.environ.get("LLM_PROVIDER")
     
     if llm_provider == "bedrock":
@@ -47,13 +48,76 @@ with st.sidebar:
         index=model_options.index(default_model) if default_model in model_options else 0
     )
     
-    # Initialize temperature slider & number of results slider
     temperature = st.slider("Temperature", 0.0, 1.0, 0.0, 0.1)
+    
     num_results = st.slider("Number of Code Snippets", 1, 10, 5)
     
     st.divider()
     
-    # Index info --- DEFAULT TO ENV VARS
+    # GitHub Repository Section
+    st.subheader("📦 Repository Setup")
+    repo_url = st.text_input(
+        "GitHub Repository URL",
+        placeholder="https://github.com/user/repo.git",
+        help="Enter the GitHub repository URL to analyze"
+    )
+    
+    is_private = st.checkbox("Private Repository", help="Check if the repo requires authentication")
+    
+    github_token = None
+    if is_private:
+        github_token = st.text_input(
+            "GitHub Token",
+            type="password",
+            help="Personal access token for private repos"
+        )
+    
+    if st.button("🔄 Load Repository", type="primary"):
+        if repo_url:
+            with st.spinner("Cloning and processing repository..."):
+                try:
+                    vectorstore = load_git_repo(repo_url, github_token)
+
+                    # Update session state with new vectorstore and retriever
+                    st.session_state.vectorstore = vectorstore
+                    st.session_state.retriever = vectorstore.as_retriever(search_kwargs={"k": num_results})
+                    
+                    # Clear old chat history since it's about a different repo
+                    st.session_state.messages = []
+                    st.session_state.chat_history = []
+                    st.success(f"✅ Repository loaded!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error loading repository: {str(e)}")
+        else:
+            st.warning("⚠️ Please enter a repository URL")
+    
+    st.divider()
+
+    # Load existing vectorstore option
+    st.subheader("📚 Existing Vectorstore")
+    if st.button("📥 Load Existing Vectorstore"):
+        with st.spinner("Loading vectorstore..."):
+            try:
+                embedding_model = os.environ.get("EMBEDDING_MODEL_ID")
+                index_name = os.environ.get("PINECONE_INDEX_NAME")
+                st.session_state.vectorstore = get_existing_vectorstore(embedding_model, index_name)
+                st.session_state.retriever = st.session_state.vectorstore.as_retriever(
+                    search_kwargs={"k": num_results}
+                )
+                st.success("✅ Vectorstore loaded successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error loading vectorstore: {str(e)}")
+    
+    # Index info
+    if "vectorstore" in st.session_state:
+        st.markdown("**Status:** ✅ Vectorstore loaded")
+    else:
+        st.markdown("**Status:** ⚠️ No repository loaded")
+
+    st.divider()
+
     st.markdown("**Index:** " + os.environ.get("PINECONE_INDEX_NAME", "N/A"))
     st.markdown("**Embedding Model:** " + os.environ.get("EMBEDDING_MODEL_ID", "N/A"))
     
@@ -62,7 +126,8 @@ with st.sidebar:
     # Clear chat button
     if st.button("🗑️ Clear Chat History"):
         st.session_state.messages = []
-        st.session_state.chat_history = []
+        if "qa_chain" in st.session_state:
+            st.session_state.qa_chain.clear_history()
         st.rerun()
 
 # Initialize session state --- empty state for messages, chat history, and vectorstore
@@ -101,7 +166,7 @@ def create_rag_chain(retriever, model, temp, chat_history):
         """You are an expert code assistant helping developers understand a legacy codebase.
         Use the following code snippets to answer the question. If you don't know the answer based on the provided context, say so.
         Be specific and reference file names and code sections when relevant.
-        
+
         Context:
         {context}
         """
