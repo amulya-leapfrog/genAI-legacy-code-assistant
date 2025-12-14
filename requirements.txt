@@ -1,0 +1,26 @@
+# Core LangChain and LLM
+langchain
+langchain-openai
+langchain-aws
+langchain-community
+langchain-text-splitters
+langchain-pinecone
+langchain-core
+
+# Pinecone for cloud vector storage
+pinecone-client
+
+# Streamlit for UI
+streamlit
+
+# GitPython for cloning GitHub repos
+gitpython
+
+# AWS SDK for Python (Bedrock)
+boto3
+
+# dotenv for loading .env files
+python-dotenv
+
+# FAISS CPU for local vector storage/testing
+faiss-cpu
